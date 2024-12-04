@@ -15,5 +15,4 @@ app.post(`/login`,[verifyAuthentification],authentification)
 app.delete(`/delete/:id`,deleteUser)
 
 // app.put(`/pic/:id`,[uploadFileUser.single("picture")],changeProfile)
-
 export default app;

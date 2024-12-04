@@ -120,7 +120,7 @@ export const addBarang = async (request: Request, response: Response) => {
     }
 };
 
-// PEMINJAMAN DAN PENGEMBALIAN BARANG
+// PEMINJAMAN BARANG
 export const borrowBarang = async (request: Request, response: Response) => {
     try {
         const { id_user, id_barang, borrow_date, return_date } = request.body;
@@ -128,21 +128,24 @@ export const borrowBarang = async (request: Request, response: Response) => {
 
         const findUser = await prisma.user.findFirst({
             where: { id: Number(id_user) },
-          });
-          if (!findUser)
-            return response
-              .status(200)
-              .json({ status: false, message:`User with id: ${id_user} is not found` });
+        });
+        if (!findUser) {
+            return response.status(200).json({
+                status: false,
+                message: `User with id: ${id_user} is not found`,
+            });
+        }
 
         const findBarang = await prisma.barang.findFirst({
-                where: { id_barang: Number(id_barang) },
-              });
-              if (!findBarang)
-                return response
-                  .status(200)
-                  .json({ status: false, message:`barang with id: ${id_barang} is not found` });
+            where: { id_barang: Number(id_barang) },
+        });
+        if (!findBarang) {
+            return response.status(200).json({
+                status: false,
+                message: `Barang with id: ${id_barang} is not found`,
+            });
+        }
 
-        // Mengecek kuantitas barang sebelum peminjaman
         const barang = await prisma.barang.findUnique({
             where: { id_barang: Number(id_barang) },
             select: { quantity: true },
@@ -162,17 +165,17 @@ export const borrowBarang = async (request: Request, response: Response) => {
                 qty: Number(qty),
                 borrow_date: new Date(borrow_date),
                 return_date: new Date(return_date),
-            },    
+            },
         });
 
-        const updateBarang = await prisma.barang.update({ 
-            where: { 
-                id_barang: Number(id_barang), 
-            }, 
-            data: { 
-                quantity: { 
-                    decrement: Number(qty), 
-                }, 
+        const updateBarang = await prisma.barang.update({
+            where: {
+                id_barang: Number(id_barang),
+            },
+            data: {
+                quantity: {
+                    decrement: Number(qty),
+                },
             },
         });
 
@@ -189,7 +192,7 @@ export const borrowBarang = async (request: Request, response: Response) => {
     }
 };
 
-
+// RETURNT BARANG
 export const returnBarang = async (request: Request, response: Response) => {
     try {
         const { borrow_id, return_date, status,qty } = request.body;
@@ -250,7 +253,6 @@ export const returnBarang = async (request: Request, response: Response) => {
 export const analisis = async (request: Request, response: Response) => {
     const { start_date, end_date, group_by } = request.body;
 
-    // Validasi input
     if (!start_date || !end_date || !group_by) {
         return response.status(400).json({
             status: "error",
@@ -258,7 +260,6 @@ export const analisis = async (request: Request, response: Response) => {
         });
     }
 
-    // Validasi format tanggal
     const startDate = new Date(start_date);
     const endDate = new Date(end_date);
 
@@ -290,7 +291,7 @@ export const analisis = async (request: Request, response: Response) => {
                 },
             });
 
-            // Mendapatkan informasi tambahan berdasarkan pengelompokan kategori
+            // KATEGORY
             const ids = usageReport.map(item => item.id_barang);
             additionalInfo = await prisma.barang.findMany({
                 where: {
@@ -314,7 +315,7 @@ export const analisis = async (request: Request, response: Response) => {
                 },
             });
 
-            // Mendapatkan informasi tambahan berdasarkan pengelompokan lokasi
+            // LOCATION
             const ids = usageReport.map(item => item.id_barang);
             additionalInfo = await prisma.barang.findMany({
                 where: {
@@ -329,7 +330,35 @@ export const analisis = async (request: Request, response: Response) => {
             });
         }
 
-        // Query untuk menghitung peminjaman yang belum dikembalikan
+        //menghitung peminjaman yang sudah dikembalikan
+        const returnedItems = await prisma.peminjaman.groupBy({
+            by: ['id_barang'],
+            where: {
+                borrow_date: {
+                    gte: startDate,
+                },
+                AND: [
+                    {
+                        return_date: {
+                            lte: endDate,
+                        }
+                    },
+                    {
+                        return_date: {
+                            not: new Date(0)
+                        }
+                    }
+                ]
+            },
+            _count: {
+                id_barang: true,
+            },
+            _sum: {
+                qty: true,
+            },
+        });
+
+        //menghitung peminjaman yang belum dikembalikan
         const notReturnedItems = await prisma.peminjaman.groupBy({
             by: ['id_barang'],
             where: {
@@ -343,7 +372,9 @@ export const analisis = async (request: Request, response: Response) => {
                         }
                     },
                     {
-                        return_date: undefined
+                        return_date: {
+                            not: new Date(0)
+                        }
                     }
                 ]
             },
@@ -358,14 +389,12 @@ export const analisis = async (request: Request, response: Response) => {
         // Menyusun hasil analisis untuk respons
         const usageAnalysis = usageReport.map(item => {
             const info = additionalInfo.find(info => info.id_barang === item.id_barang);
-            const notReturnedItem = notReturnedItems.find(notReturned => notReturned.id_barang === item.id_barang);
-            const totalNotReturned = notReturnedItem?._count?.id_barang ?? 0;
-            const totalBorrowed = item._count.id_barang + totalNotReturned;
-            const totalReturned = item._sum.qty ?? 0; // Jika qty null, gunakan 0
-            const itemsInUse = totalBorrowed - totalReturned;
+            const returnedItem = returnedItems.find(returned => returned.id_barang === item.id_barang);
+            const totalReturned = returnedItem?._count?.id_barang ?? 0; // Jika _count id_barang null, gunakan 0
+            const itemsInUse = item._count.id_barang - totalReturned;
             return {
                 group: info ? info[group_by as keyof typeof info] : 'Unknown',
-                total_borrowed: totalBorrowed,
+                total_borrowed: item._count.id_barang,
                 total_returned: totalReturned,
                 items_in_use: itemsInUse
             };
@@ -389,7 +418,6 @@ export const analisis = async (request: Request, response: Response) => {
         });
     }
 };
-
 
 
   //BorrowAnalysis

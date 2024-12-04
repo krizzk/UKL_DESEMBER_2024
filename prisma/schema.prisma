@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+
+enum Role {
+  admin
+  user
+}
+
+enum Status{
+  kembali
+  dipinjam
+  hilang
+}
+
+model user {
+  id              Int      @id @default(autoincrement())
+  uuid            String   @default("")
+  username        String   @unique @default("")
+  // email           String   @unique @default("")
+  password        String   @default("")
+  role            Role     @default(user)
+  createdAt       DateTime @default(now())
+  updateAt        DateTime @updatedAt
+  peminjaman      Peminjaman[]
+  // profile_picture String   @default("")
+  // order           order[]
+}
+
+model Barang {
+  id_barang Int @id @default(autoincrement())
+  nama String
+  category String
+  location String
+  quantity Int
+  peminjaman Peminjaman[]
+}
+
+model Peminjaman {
+  id_peminjaman Int @id @default(autoincrement())
+  id_user Int
+  id_barang Int
+  qty Int
+  borrow_date DateTime @db.Date
+  return_date DateTime @db.Date
+  status Status @default(dipinjam)
+  barang Barang @relation(fields: [id_barang], references: [id_barang])
+  user user @relation(fields: [id_user], references: [id])
+}
+
+
+
+// enum Category {
+//   FOOD
+//   DRINK
+//   SNACK
+// }
+
+// enum payment {
+//   CASH
+//   QRIS
+// }
+
+// enum Status {
+//   NEW
+//   PAID
+//   DONE
+// }
+
+// model menu {
+//   id          Int          @id @default(autoincrement())
+//   uuid        String       @default("")
+//   name        String       @default("")
+//   price       Int          @default(0)
+//   category    Category     @default(FOOD)
+//   picture     String       @default("")
+//   description String       @default("") @db.Text
+//   createdAt   DateTime     @default(now())
+//   updateAt    DateTime     @default(now()) @updatedAt // Beri nilai default saat kolom ditambahkan
+//   order_list  order_list[]
+//   order       order[]
+// }
+
+// model order_list {
+//   id       Int    @id @default(autoincrement())
+//   uuid     String @default("")
+//   order    order? @relation(fields: [idOrder], references: [id])
+//   idOrder  Int?
+//   menu     menu?  @relation(fields: [idMenu], references: [id])
+//   idMenu   Int?
+//   quantity Int    @default(0)
+//   note     String @default("") @db.Text
+// }
+
+// model order {
+//   id             Int          @id @default(autoincrement())
+//   uuid           String       @default("")
+//   customer       String       @default("")
+//   table_number   String       @default("")
+//   total_price    Int          @default(0)
+//   payment_method payment      @default(CASH)
+//   idUser         Int?
+//   user           user?        @relation(fields: [idUser], references: [id])
+//   idMenu         Int?
+//   menu           menu?        @relation(fields: [idMenu], references: [id])
+//   status         Status       @default(NEW)
+//   createdAt      DateTime     @default(now())
+//   order_list     order_list[]
+// }

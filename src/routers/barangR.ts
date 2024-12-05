@@ -3,8 +3,6 @@ import { validateAnalis, validateBorrow, validateBorrowAnalis, validateReturn, v
 import { addBarang, analisis, borrowAnalysis, borrowBarang, getAllBarang, getBarang, returnBarang, updateBarang } from "../controllers/barangC";
 import { verifyRole, verifyToken } from "../middlewares/authorization";
 
-
-
 const app = express()
 app.use(express.json())
 
@@ -18,6 +16,5 @@ app.post("/inventory/borrow",[verifyToken,verifyRole(["admin","user"]),validateB
 app.post("/inventory/return",[verifyToken,verifyRole(["admin","user"]),validateReturn],returnBarang )
 app.post(`/inventory/usage-report`,[verifyToken,verifyRole(["admin"]),validateAnalis],analisis)
 app.post(`/inventory/borrow-analysis`,[verifyToken,verifyRole(["admin"]),validateBorrowAnalis],borrowAnalysis)
-
 
 export default app;

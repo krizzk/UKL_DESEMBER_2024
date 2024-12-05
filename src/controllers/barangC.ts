@@ -197,8 +197,6 @@ export const returnBarang = async (request: Request, response: Response) => {
     try {
         const { borrow_id, return_date, status,qty } = request.body;
 
-
-
         const peminjaman = await prisma.peminjaman.findUnique({ 
           where: { 
             id_peminjaman: Number(borrow_id) 
@@ -250,6 +248,90 @@ export const returnBarang = async (request: Request, response: Response) => {
 
 
 //analisis
+
+// export const analisis = async (req: Request, res: Response) => {
+//     try {
+//       const {
+//         startDate,
+//         endDate,
+//         groupBy,
+//       }: {
+//         startDate: string;
+//         endDate: string;
+//         groupBy: "category" | "location";
+//       } = req.body;
+  
+//       // Validate that groupBy is either 'category' or 'location'
+//       if (!["category", "location"].includes(groupBy)) {
+//         return res.status(400).json({
+//           status: "error",
+//           message: 'Invalid groupBy value. Use "category" or "location".',
+//         });
+//       }
+  
+//       // Fetch borrowed items within the given period
+//       const borrowedItems = await prisma.peminjaman.findMany({
+//         where: {
+//           return_date: {
+//             gte: new Date(startDate),
+//             lte: new Date(endDate),
+//           },
+//         },
+//         include: {
+//           barang: true, // Include item details
+//         },
+//       });
+  
+//       // Group by the selected criteria (category or location)
+//       const usageAnalysis = borrowedItems.reduce((acc, borrow) => {
+//         const group = borrow.barang[groupBy as "category" | "location"]; // Dynamically group by 'category' or 'location'
+  
+//         if (!acc[group]) {
+//           acc[group] = {
+//             group,
+//             total_borrowed: 0,
+//             total_returned: 0,
+//             items_in_use: 0,
+//           };
+//         }
+  
+//         acc[group].total_borrowed += borrow.qty;
+//         acc[group].total_returned +=
+//           borrow.status === "dipinjam" || borrow.status === "telat"
+//             ? borrow.qty
+//             : 0;
+//         acc[group].items_in_use +=
+//           borrow.status === "dipinjam"
+//             ? borrow.qty
+//             : borrow.status === "telat"
+//             ? 0
+//             : -borrow.qty;
+  
+//         return acc;
+//       }, {} as Record<string, { group: string; total_borrowed: number; total_returned: number; items_in_use: number }>);
+  
+//       const usageAnalysisArray = Object.values(usageAnalysis);
+  
+//       return res.status(200).json({
+//         status: "success",
+//         data: {
+//           analysis_period: {
+//             start_date: startDate,
+//             end_date: endDate,
+//           },
+//           usage_analysis: usageAnalysisArray,
+//         },
+//         message: "Successfully generated usage report",
+//       });
+//     } catch (error) {
+//       return res.status(400).json({
+//         status: "error",
+//         message: `There was an error: ${error}`,
+//         error,
+//       });
+//     }
+//   };
+
 export const analisis = async (request: Request, response: Response) => {
     const { start_date, end_date, group_by } = request.body;
 
@@ -330,25 +412,18 @@ export const analisis = async (request: Request, response: Response) => {
             });
         }
 
-        //menghitung peminjaman yang sudah dikembalikan
+        //menghitung peminjaman yang sudah dikembalikan dalam periode analisis
         const returnedItems = await prisma.peminjaman.groupBy({
             by: ['id_barang'],
             where: {
                 borrow_date: {
                     gte: startDate,
                 },
-                AND: [
-                    {
-                        return_date: {
-                            lte: endDate,
-                        }
-                    },
-                    {
-                        return_date: {
-                            not: new Date(0)
-                        }
-                    }
-                ]
+                return_date: {
+                    gte: startDate,
+                    lte: endDate // Memastikan hanya pengembalian dalam periode analisis yang dihitung
+                },
+                status: 'kembali' // Pastikan hanya yang statusnya 'kembali'
             },
             _count: {
                 id_barang: true,
@@ -358,7 +433,7 @@ export const analisis = async (request: Request, response: Response) => {
             },
         });
 
-        //menghitung peminjaman yang belum dikembalikan
+        //menghitung peminjaman yang belum dikembalikan atau dikembalikan setelah periode analisis
         const notReturnedItems = await prisma.peminjaman.groupBy({
             by: ['id_barang'],
             where: {
@@ -368,13 +443,16 @@ export const analisis = async (request: Request, response: Response) => {
                 OR: [
                     {
                         return_date: {
-                            gt: endDate,
+                            gt: endDate
                         }
                     },
                     {
                         return_date: {
-                            not: new Date(0)
+                            equals: new Date(0)
                         }
+                    },
+                    {
+                        status: 'dipinjam'
                     }
                 ]
             },
@@ -418,6 +496,7 @@ export const analisis = async (request: Request, response: Response) => {
         });
     }
 };
+
 
 
   //BorrowAnalysis

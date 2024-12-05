@@ -31,7 +31,7 @@ CREATE TABLE `Peminjaman` (
     `qty` INTEGER NOT NULL,
     `borrow_date` DATE NOT NULL,
     `return_date` DATE NOT NULL,
-    `status` ENUM('kembali', 'dipinjam', 'hilang') NOT NULL DEFAULT 'dipinjam',
+    `status` ENUM('kembali', 'dipinjam', 'telat') NOT NULL DEFAULT 'dipinjam',
 
     PRIMARY KEY (`id_peminjaman`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

@@ -22,7 +22,7 @@ enum Role {
 enum Status{
   kembali
   dipinjam
-  hilang
+  telat
 }
 
 model user {

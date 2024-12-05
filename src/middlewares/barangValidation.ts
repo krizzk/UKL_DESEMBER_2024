@@ -66,7 +66,7 @@ export const validateBorrow = (req: Request, res: Response, next: NextFunction) 
 const returnSchema = Joi.object({
     borrow_id: Joi.number().required(), //integer
     return_date: Joi.date().iso().required(),
-    status: Joi.string().valid("kembali","hilang").required(),
+    status: Joi.string().valid("kembali","telat").required(),
     user: Joi.optional(),
 });
 
